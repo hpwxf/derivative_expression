@@ -5,10 +5,9 @@
 #ifndef LIBKRIGING_PARSER__GRAMMAR_HPP
 #define LIBKRIGING_PARSER__GRAMMAR_HPP
 
-#include "ASTNode.hpp"
 #include <tao/pegtl/string_input.hpp>
+#include "ASTNode.hpp"
 
-std::unique_ptr<ASTNode> parse(tao::TAO_PEGTL_NAMESPACE::string_input<> & in);
+std::unique_ptr<ASTNode> parse(tao::TAO_PEGTL_NAMESPACE::string_input<>& in);
 
-
-#endif//LIBKRIGING_PARSER__GRAMMAR_HPP
+#endif  // LIBKRIGING_PARSER__GRAMMAR_HPP

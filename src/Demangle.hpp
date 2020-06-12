@@ -7,10 +7,8 @@
 std::string demangle(const std::string_view mangled);
 
 template <typename T>
-inline std::string
-demangle()
-{
+inline std::string demangle() {
   return demangle(typeid(T).name());
 }
 
-#endif   // DEMANGLE_HPP
+#endif  // DEMANGLE_HPP

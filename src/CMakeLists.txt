@@ -9,7 +9,7 @@ if (CXX_CLANG_TIDY)
             CXX_CLANG_TIDY ${CXX_CLANG_TIDY})
 endif ()
 
-target_link_libraries(parser ${CONAN_LIBS})
+target_link_libraries(parser)
 
 target_include_directories(parser
     PUBLIC

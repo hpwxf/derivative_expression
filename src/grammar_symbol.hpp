@@ -6,14 +6,14 @@
 #define LIBKRIGING_PARSER__GRAMMAR_SYMBOL_HPP
 
 #include <tao/pegtl/ascii.hpp>
-#include <tao/pegtl/rules.hpp>
 #include <tao/pegtl/internal/pegtl_string.hpp>
+#include <tao/pegtl/rules.hpp>
 
 namespace language {
 
-    using namespace tao::TAO_PEGTL_NAMESPACE;// NOLINT
-    
-    // clang-format off
+using namespace tao::TAO_PEGTL_NAMESPACE;  // NOLINT
+
+// clang-format off
 struct index : plus< digit > {};
 // number are always positive; prefix op is matched for prefix sign
 struct number : seq< seq< plus< digit >,
@@ -59,7 +59,7 @@ struct scalar_constant : sor< pi_constant, e_constant > {};
 struct restricted_identifier : sor < vector_variable, nullary_a2s_function_name, unary_s2s_function_name, unary_v2s_function_name, unary_v2v_function_name, binary_v2s_function_name, scalar_constant > {};
 struct scalar_variable : seq< not_at< restricted_identifier >, identifier > {};
 struct indexed_vector_variable : seq < vector_variable, one<'_'>, index > {};
-    // clang-format on
-}
+// clang-format on
+}  // namespace language
 
-#endif//LIBKRIGING_PARSER__GRAMMAR_SYMBOL_HPP
+#endif  // LIBKRIGING_PARSER__GRAMMAR_SYMBOL_HPP

@@ -3,9 +3,7 @@
 #include <cxxabi.h>
 #include <memory>
 
-std::string
-demangle(const std::string_view mangled)
-{
+std::string demangle(const std::string_view mangled) {
   int status = -1;
 
   char* cxa_demangled = abi::__cxa_demangle(mangled.data(), NULL, NULL, &status);

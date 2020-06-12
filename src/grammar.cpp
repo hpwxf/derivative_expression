@@ -4,17 +4,17 @@
 
 #include "grammar.hpp"
 
-#include "ASTNode.hpp"
-#include "grammar_symbol.hpp"
 #include <tao/pegtl.hpp>
 #include <tao/pegtl/analyze.hpp>
 #include <tao/pegtl/contrib/parse_tree.hpp>
+#include "ASTNode.hpp"
+#include "grammar_symbol.hpp"
 
-using namespace tao::TAO_PEGTL_NAMESPACE;// NOLINT
+using namespace tao::TAO_PEGTL_NAMESPACE;  // NOLINT
 
-namespace language {// the grammar
+namespace language {  // the grammar
 
-    // clang-format off
+// clang-format off
 
 struct open_bracket : pad< one< '(' >, ignored > {};
 struct close_bracket : pad< one< ')' >, ignored > {};
@@ -46,107 +46,118 @@ struct vector_expression : seq< opt< sor< prefix_plus, prefix_minus> >,
                                 list_must< vector_term, sor<plus,minus> >
                               > {};
 struct grammar : must< scalar_expression, eof > {};
-    // clang-format on
+// clang-format on
 
-    // after a node is stored successfully, you can add an optional transformer like this:
-    struct rearrange : parse_tree::apply<rearrange>// allows bulk selection, see selector<...>
-    {
-        // recursively rearrange nodes. the basic principle is:
-        //
-        // from:          TERM/EXPR
-        //                /   |   \          (LHS... may be one or more children, followed by OP,)
-        //             LHS... OP   RHS       (which is one operator, and RHS, which is a single child)
-        //
-        // to:               OP
-        //                  /  \             (OP now has two children, the original TERM/EXPR and RHS)
-        //         TERM/EXPR    RHS          (Note that TERM/EXPR has two fewer children now)
-        //             |
-        //            LHS...
-        //
-        // if only one child is left for LHS..., replace the TERM/EXPR with the child directly.
-        // otherwise, perform the above transformation, then apply it recursively until LHS...
-        // becomes a single child, which then replaces the parent node and the recursion ends.
-        template<typename... States>
-        static void transform(std::unique_ptr<ASTNode> &n, States &&... st) {
-            if (n->children.size() == 0) {
-                ;// noop
-            } else if (n->children.size() == 1) {
-                if (n->is<scalar_expression>() || n->is<vector_expression>() || n->is<scalar_term>() ||
-                    n->is<vector_term>()) {
-                    n = std::move(n->children.back());
-                }
-            } else {
-                auto &c = n->children;
-                n->remove_content();
-                auto r = std::move(c.back());
-                c.pop_back();
-                auto o = std::move(c.back());
-                c.pop_back();
+// after a node is stored successfully, you can add an optional transformer like this:
+struct rearrange
+    : parse_tree::apply<rearrange>  // allows bulk selection, see selector<...>
+{
+  // recursively rearrange nodes. the basic principle is:
+  //
+  // from:          TERM/EXPR
+  //                /   |   \          (LHS... may be one or more children, followed by OP,)
+  //             LHS... OP   RHS       (which is one operator, and RHS, which is a single child)
+  //
+  // to:               OP
+  //                  /  \             (OP now has two children, the original TERM/EXPR and RHS)
+  //         TERM/EXPR    RHS          (Note that TERM/EXPR has two fewer children now)
+  //             |
+  //            LHS...
+  //
+  // if only one child is left for LHS..., replace the TERM/EXPR with the child directly.
+  // otherwise, perform the above transformation, then apply it recursively until LHS...
+  // becomes a single child, which then replaces the parent node and the recursion ends.
+  template <typename... States>
+  static void transform(std::unique_ptr<ASTNode>& n, States&&... st) {
+    if (n->children.size() == 0) {
+      ;  // noop
+    } else if (n->children.size() == 1) {
+      if (n->is<scalar_expression>() || n->is<vector_expression>() || n->is<scalar_term>() || n->is<vector_term>()) {
+        n = std::move(n->children.back());
+      }
+    } else {
+      auto& c = n->children;
+      n->remove_content();
+      auto r = std::move(c.back());
+      c.pop_back();
+      auto o = std::move(c.back());
+      c.pop_back();
 
-                // std::cerr << "-----\n";
-                // std::cerr << "n=" << n->name() << " : " << ((n->has_content())?n->string():"") << "\n";
-                // std::cerr << "o=" << o->name() << " : " << ((o->has_content())?o->string():"") << "\n";
-                // std::cerr << "r=" << r->name() << " : " << ((r->has_content())?r->string():"") << "\n";
-                
-                if (o->is<prefix_plus>() || o->is<prefix_minus>()) {
-                    assert(c.empty());
-                    o->children.emplace_back(std::move(r));
-                    n = std::move(o);
-                } else {
-                    assert(o->is<plus>() || o->is<minus>() || o->is<multiply>() || o->is<divide>());
-                    o->children.emplace_back(std::move(n));
-                    o->children.emplace_back(std::move(r));
-                    n = std::move(o);
-                    if (n->children.size() > 0) { transform(n->children.front(), st...); }
-                }
-            }
+      // std::cerr << "-----\n";
+      // std::cerr << "n=" << n->name() << " : " << ((n->has_content())?n->string():"") << "\n";
+      // std::cerr << "o=" << o->name() << " : " << ((o->has_content())?o->string():"") << "\n";
+      // std::cerr << "r=" << r->name() << " : " << ((r->has_content())?r->string():"") << "\n";
+
+      if (o->is<prefix_plus>() || o->is<prefix_minus>()) {
+        assert(c.empty());
+        o->children.emplace_back(std::move(r));
+        n = std::move(o);
+      } else {
+        assert(o->is<plus>() || o->is<minus>() || o->is<multiply>() || o->is<divide>());
+        o->children.emplace_back(std::move(n));
+        o->children.emplace_back(std::move(r));
+        n = std::move(o);
+        if (n->children.size() > 0) {
+          transform(n->children.front(), st...);
         }
-    };
-
-    // after a node is stored successfully, you can add an optional transformer like this:
-    struct collapse_function_name : parse_tree::apply<collapse_function_name>// allows bulk selection, see selector<...>
-    {
-        // recursively rearrange nodes. the basic principle is:
-        //
-        // from:          FUNCTION
-        //                /      \       (FUNCTION content is full sub-expression)
-        //       FUNCTION_NAME  ARGS...
-        //
-        // to:         FUNCTION_NAME
-        //                  /  \         (now FUNCTION content is its name)
-        //                 ARGS...
-        template<typename... States>
-        static void transform(std::unique_ptr<ASTNode> &n, States &&... st) {
-            assert(n->is<nullary_a2s_function>() || n->is<unary_s2s_function>() || n->is<unary_v2s_function>() ||
-                   n->is<unary_v2v_function>() || n->is<binary_v2s_function>());
-            auto &c = n->children;
-            auto f = std::move(c[0]);
-            for (std::size_t i = 1; i < c.size(); ++i) f->children.emplace_back(std::move(c[i]));
-            n = std::move(f);
-        }
-    };
-
-    // select which rules in the grammar will produce parse tree nodes:
-    template<typename Rule>
-    using selector = parse_tree::selector<
-            Rule,
-            parse_tree::store_content::on<index, number, scalar_constant, scalar_variable,
-                                          vector_variable, indexed_vector_variable,
-                                          // scalar_function, vector_function,
-                                          nullary_a2s_function_name, unary_s2s_function_name, unary_v2s_function_name,
-                                          unary_v2v_function_name, binary_v2s_function_name>,
-            parse_tree::remove_content::on<multiply, divide, plus, minus, prefix_plus, prefix_minus>,
-            rearrange::on<scalar_term, vector_term, scalar_expression, vector_expression>,
-            collapse_function_name::on<nullary_a2s_function, unary_s2s_function, unary_v2s_function, unary_v2v_function,
-                                       binary_v2s_function>>;
-
-}// namespace language
-
-std::unique_ptr<ASTNode> parse(string_input<> &in) {
-    if (analyze<language::grammar>() != 0) {
-        std::cerr << "there are problems in grammar" << std::endl;
-        return {};
+      }
     }
+  }
+};
 
-    return parse_tree::parse<language::grammar, ASTNode, language::selector>(in);
+// after a node is stored successfully, you can add an optional transformer like this:
+struct collapse_function_name
+    : parse_tree::apply<collapse_function_name>  // allows bulk selection, see selector<...>
+{
+  // recursively rearrange nodes. the basic principle is:
+  //
+  // from:          FUNCTION
+  //                /      \       (FUNCTION content is full sub-expression)
+  //       FUNCTION_NAME  ARGS...
+  //
+  // to:         FUNCTION_NAME
+  //                  /  \         (now FUNCTION content is its name)
+  //                 ARGS...
+  template <typename... States>
+  static void transform(std::unique_ptr<ASTNode>& n, States&&... st) {
+    assert(n->is<nullary_a2s_function>() || n->is<unary_s2s_function>() || n->is<unary_v2s_function>()
+           || n->is<unary_v2v_function>() || n->is<binary_v2s_function>());
+    auto& c = n->children;
+    auto f = std::move(c[0]);
+    for (std::size_t i = 1; i < c.size(); ++i)
+      f->children.emplace_back(std::move(c[i]));
+    n = std::move(f);
+  }
+};
+
+// select which rules in the grammar will produce parse tree nodes:
+template <typename Rule>
+using selector = parse_tree::selector<
+    Rule,
+    parse_tree::store_content::on<index,
+                                  number,
+                                  scalar_constant,
+                                  scalar_variable,
+                                  vector_variable,
+                                  indexed_vector_variable,
+                                  // scalar_function, vector_function,
+                                  nullary_a2s_function_name,
+                                  unary_s2s_function_name,
+                                  unary_v2s_function_name,
+                                  unary_v2v_function_name,
+                                  binary_v2s_function_name>,
+    parse_tree::remove_content::on<multiply, divide, plus, minus, prefix_plus, prefix_minus>,
+    rearrange::on<scalar_term, vector_term, scalar_expression, vector_expression>,
+    collapse_function_name::
+        on<nullary_a2s_function, unary_s2s_function, unary_v2s_function, unary_v2v_function, binary_v2s_function>>;
+
+}  // namespace language
+
+std::unique_ptr<ASTNode> parse(string_input<>& in) {
+  if (analyze<language::grammar>() != 0) {
+    std::cerr << "there are problems in grammar" << std::endl;
+    return {};
+  }
+
+  return parse_tree::parse<language::grammar, ASTNode, language::selector>(in);
 }
