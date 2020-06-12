@@ -5,6 +5,28 @@
 #ifndef LIBKRIGING_PARSER__ASTNODE_HPP
 #define LIBKRIGING_PARSER__ASTNODE_HPP
 
+#include <string>
+#include <vector>
+
+using Number = double;
+using Vector = std::vector<Number>;
+
+struct IFunction {
+    virtual ~IFunction() = default;
+    virtual auto string() const -> std::string = 0;
+};
+
+struct IScalarFunction : IFunction {
+    ~IScalarFunction() override = default;
+    [[nodiscard]] virtual auto apply(const Vector & x) const -> Number = 0;
+};
+
+struct IVectorFunction : IFunction {
+    ~IVectorFunction() override = default;
+    [[nodiscard]] virtual auto apply(const Vector & x) const -> Vector = 0;
+};
+
+
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
 using namespace tao::TAO_PEGTL_NAMESPACE;// NOLINT
@@ -86,6 +108,6 @@ public:
 //    }
 };
 
-std::string f(ASTNode & node);
+std::unique_ptr<IFunction> f(ASTNode & node);
 
 #endif//LIBKRIGING_PARSER__ASTNODE_HPP

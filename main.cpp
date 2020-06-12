@@ -23,7 +23,8 @@ int main(int argc, char **argv) {
     try {
         const auto root = parse(in);
         parse_tree::print_dot(std::cout, *root);
-        std::cerr << f(*root) << std::endl;
+        std::unique_ptr<IFunction> a = f(*root); 
+        std::cerr << a->string() << std::endl;
         
         return 0;
     } catch (const parse_error &e) {
