@@ -1,0 +1,9 @@
+//
+// Created by Pascal Havé on 11/06/2020.
+//
+
+#ifndef LIBKRIGING_PARSER__ALGEBRA_HPP
+#define LIBKRIGING_PARSER__ALGEBRA_HPP
+
+
+#endif//LIBKRIGING_PARSER__ALGEBRA_HPP

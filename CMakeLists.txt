@@ -47,11 +47,17 @@ else ()
     endif ()
 endif ()
 
-add_executable(parser main.cpp)
+add_executable(parser main.cpp ASTNode.cpp ASTNode.hpp Demangle.cpp Demangle.hpp grammar.hpp grammar.cpp grammar_symbol.hpp)
 target_link_libraries(parser ${CONAN_LIBS})
+
+add_executable(algebra algebra.cpp)
+
 
 if (CXX_CLANG_TIDY)
     set_target_properties(parser
+            PROPERTIES
+            CXX_CLANG_TIDY ${CXX_CLANG_TIDY})
+    set_target_properties(algebra
             PROPERTIES
             CXX_CLANG_TIDY ${CXX_CLANG_TIDY})
 endif ()
