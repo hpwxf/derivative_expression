@@ -54,7 +54,7 @@ add_subdirectory(src)
 set(CATCH_MODULE_PATH "${CONAN_LIB_DIRS_CATCH2}/cmake/Catch2")
 include("${CATCH_MODULE_PATH}/ParseAndAddCatchTests.cmake")
 
-#enable_testing()
+enable_testing()
 add_subdirectory(tests)
 
 add_executable(main main.cpp)
