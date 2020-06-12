@@ -1,15 +1,12 @@
-// Copyright (c) 2017-2020 Dr. Colin Hirsch and Daniel Frey
-// Please see LICENSE for license or visit https://github.com/taocpp/PEGTL/
-
 #include <iostream>
 #include <string>
 
-#include "Demangle.hpp"
-#include "ASTNode.hpp"
+#include "src/ASTNode.hpp"
+#include "src/Demangle.hpp"
 #include <tao/pegtl/contrib/parse_tree_to_dot.hpp>
-#include <tao/pegtl/string_input.hpp>
+using namespace tao::TAO_PEGTL_NAMESPACE;// NOLINT
 
-#include "grammar.hpp"
+#include "src/grammar.hpp"
 
 int main(int argc, char **argv) {
     if (argc != 2) {

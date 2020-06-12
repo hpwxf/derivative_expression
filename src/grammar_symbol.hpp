@@ -10,6 +10,8 @@
 #include <tao/pegtl/internal/pegtl_string.hpp>
 
 namespace language {
+
+    using namespace tao::TAO_PEGTL_NAMESPACE;// NOLINT
     
     // clang-format off
 struct index : plus< digit > {};

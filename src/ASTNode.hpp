@@ -29,9 +29,7 @@ struct IVectorFunction : IFunction {
 
 #include <tao/pegtl/contrib/parse_tree.hpp>
 
-using namespace tao::TAO_PEGTL_NAMESPACE;// NOLINT
-
-class ASTNode : public parse_tree::basic_node<ASTNode>
+class ASTNode : public tao::TAO_PEGTL_NAMESPACE::parse_tree::basic_node<ASTNode>
 {
 private:
     [[nodiscard]] 
@@ -69,7 +67,7 @@ public:
     string() const
     {
         if (this->has_content()) {
-            return this->parse_tree::basic_node<ASTNode>::string();
+            return this->tao::TAO_PEGTL_NAMESPACE::parse_tree::basic_node<ASTNode>::string();
         } else {
             auto end   = this->_getEnd();
             auto begin = this->_getBegin();

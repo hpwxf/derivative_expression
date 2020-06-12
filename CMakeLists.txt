@@ -47,8 +47,17 @@ else ()
     endif ()
 endif ()
 
-add_executable(parser main.cpp ASTNode.cpp ASTNode.hpp Demangle.cpp Demangle.hpp grammar.hpp grammar.cpp grammar_symbol.hpp)
-target_link_libraries(parser ${CONAN_LIBS})
+
+add_subdirectory(src)
+
+set(CATCH_MODULE_PATH "${CONAN_LIB_DIRS_CATCH2}/cmake/Catch2")
+include("${CATCH_MODULE_PATH}/ParseAndAddCatchTests.cmake")
+
+#enable_testing()
+add_subdirectory(tests)
+
+add_executable(main main.cpp)
+target_link_libraries(main parser)
 
 add_executable(algebra algebra.cpp)
 

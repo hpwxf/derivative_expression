@@ -1,5 +1,6 @@
 [requires]
 taocpp-pegtl/2.8.3
+catch2/2.12.2
 
 [generators]
 cmake
