@@ -10,6 +10,7 @@ using namespace tao::TAO_PEGTL_NAMESPACE;  // NOLINT
 
 TEST_CASE("Echo valid input expression", "[echo]") {
   auto e = GENERATE("exp(2)",  //
+                    "2-(2/6+2)*4",
                     "exp(-pi*a-e*norm2(x)+dot(x-y,x)*x_2)",
                     "exp ( -pi * a - e * norm2 ( x ) + dot ( x - y , x ) * x_2 ) ");
 
@@ -18,11 +19,10 @@ TEST_CASE("Echo valid input expression", "[echo]") {
     try {
       const auto root = parse(in);
       std::string expr_without_blank = e;
-      expr_without_blank.erase(
-          std::remove_if(expr_without_blank.begin(), expr_without_blank.end(), isspace),
-          expr_without_blank.end());
+      expr_without_blank.erase(std::remove_if(expr_without_blank.begin(), expr_without_blank.end(), isspace),
+                               expr_without_blank.end());
 
-      std::unique_ptr<IFunction> out = f(*root);
+      std::unique_ptr<IFunction> out = build_function(*root);
       REQUIRE(expr_without_blank == out->string());
     } catch (const parse_error& e) {
       const auto p = e.positions.front();

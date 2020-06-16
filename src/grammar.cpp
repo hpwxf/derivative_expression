@@ -69,6 +69,7 @@ struct rearrange
   // becomes a single child, which then replaces the parent node and the recursion ends.
   template <typename... States>
   static void transform(std::unique_ptr<ASTNode>& n, States&&... st) {
+    // return; // premature return for debugging without rearrange 
     if (n->children.size() == 0) {
       ;  // noop
     } else if (n->children.size() == 1) {
@@ -83,10 +84,10 @@ struct rearrange
       auto o = std::move(c.back());
       c.pop_back();
 
-      // std::cerr << "-----\n";
-      // std::cerr << "n=" << n->name() << " : " << ((n->has_content())?n->string():"") << "\n";
-      // std::cerr << "o=" << o->name() << " : " << ((o->has_content())?o->string():"") << "\n";
-      // std::cerr << "r=" << r->name() << " : " << ((r->has_content())?r->string():"") << "\n";
+      //      std::cerr << "-----\n";
+      //      std::cerr << "n=" << n->name() << " : " << ((n->has_content()) ? n->string() : "") << "\n";
+      //      std::cerr << "o=" << o->name() << " : " << ((o->has_content()) ? o->string() : "") << "\n";
+      //      std::cerr << "r=" << r->name() << " : " << ((r->has_content()) ? r->string() : "") << "\n";
 
       if (o->is<prefix_plus>() || o->is<prefix_minus>()) {
         assert(c.empty());
@@ -138,8 +139,8 @@ using selector = parse_tree::selector<
                                   number,
                                   scalar_constant,
                                   scalar_variable,
-                                  vector_variable,
                                   indexed_vector_variable,
+                                  vector_variable,
                                   // scalar_function, vector_function,
                                   nullary_a2s_function_name,
                                   unary_s2s_function_name,

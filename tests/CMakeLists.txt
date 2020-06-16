@@ -11,5 +11,10 @@ add_executable(parse test_parse.cpp)
 target_link_libraries(parse LINK_PUBLIC parser)
 add_dependencies(all_test_binaries parse)
 
+add_executable(eval test_eval.cpp)
+target_link_libraries(eval LINK_PUBLIC parser)
+add_dependencies(all_test_binaries eval)
+
 ParseAndAddCatchTests(trivial)
 ParseAndAddCatchTests(parse)
+ParseAndAddCatchTests(eval)
