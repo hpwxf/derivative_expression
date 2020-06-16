@@ -11,6 +11,7 @@
 
 using Number = double;
 using Vector = std::vector<Number>;
+using Index =std::size_t;
 
 class NotImplementedException : public std::logic_error {
  public:
@@ -36,11 +37,15 @@ struct IFunction {
 };
 
 struct IScalarFunction : IFunction {
+  virtual std::unique_ptr<IScalarFunction> clone() const = 0;  
   [[nodiscard]] virtual auto apply(const Vector& x) const -> Number = 0;
+  virtual auto diff(const Index I) const -> std::unique_ptr<IScalarFunction> = 0; 
 };
 
 struct IVectorFunction : IFunction {
+  virtual std::unique_ptr<IVectorFunction> clone() const = 0;
   [[nodiscard]] virtual auto apply(const Vector& x) const -> Vector = 0;
+  virtual auto diff(const Index I) const -> std::unique_ptr<IVectorFunction> = 0;
 };
 
 #include <tao/pegtl/contrib/parse_tree.hpp>
