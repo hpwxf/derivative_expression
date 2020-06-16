@@ -15,14 +15,16 @@ using Index =std::size_t;
 
 class NotImplementedException : public std::logic_error {
  public:
-  explicit NotImplementedException(const char* func_name)
-      : std::logic_error{std::string{func_name} + " is not yet implemented"} {}
+  explicit NotImplementedException(const char* func_name, std::string extra = "")
+      : std::logic_error{std::string{func_name} + " is not yet implemented" + extra} {}
 };
 
 enum class PriorityLevel : int {
   Unknown,
   Value,
+  Quotient,
   Factor,
+  Prefixed,
   Term
 };
 

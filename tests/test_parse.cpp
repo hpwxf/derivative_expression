@@ -11,6 +11,7 @@ using namespace tao::TAO_PEGTL_NAMESPACE;  // NOLINT
 TEST_CASE("Echo valid input expression", "[echo]") {
   auto e = GENERATE("exp(2)",  //
                     "2-(2/6+2)*4",
+                    "(-x_0)*1+(-1)*(+x_0)",
                     "exp(-pi*a-e*norm2(x)+dot(x-y,x)*x_2)",
                     "exp ( -pi * a - e * norm2 ( x ) + dot ( x - y , x ) * x_2 ) ");
 
@@ -35,9 +36,10 @@ TEST_CASE("Echo valid input expression", "[echo]") {
 }
 
 TEST_CASE("Invalid input expression", "[!shouldfail]") {
-  auto e = GENERATE("exp(--2)",  // invalid double --
-                    "x",         // vector expression (requires scalar expression)
-                    "exp(x)"     // scalar function on vector
+  auto e = GENERATE("exp(--2)",        // invalid double --
+                    "x",               // vector expression (requires scalar expression)
+                    "-x_0*1+-1*+x_0",  // too close term and prefix operator
+                    "exp(x)"           // scalar function on vector
   );
   SECTION(e) {
     string_input in(e, "invalid input expression");

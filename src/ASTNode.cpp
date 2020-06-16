@@ -7,40 +7,84 @@
 #include <utility>
 #include "grammar_symbol.hpp"
 
-class ScalarUndefFunction : public IScalarFunction {
+class ScalarNumber : public IScalarFunction {
  public:
-  explicit ScalarUndefFunction(std::string s) : m_string(std::move(s)) {}
+  explicit ScalarNumber(std::string s) : m_s(std::move(s)), m_number(std::stod(m_s)) {}
+  explicit ScalarNumber(Number x) : m_s(std::to_string(x)), m_number(x) {}
 
-  [[nodiscard]] std::string string() const override { return "undef_scalar(" + m_string + ")"; }
-  [[nodiscard]] std::unique_ptr<IScalarFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
-  }
-  [[nodiscard]] Number apply(const Vector& x) const override { throw NotImplementedException(__PRETTY_FUNCTION__); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Unknown; }
+  [[nodiscard]] std::string string() const override { return m_s; }
+  [[nodiscard]] std::unique_ptr<IScalarFunction> clone() const override { return std::make_unique<ScalarNumber>(m_s); }
+  [[nodiscard]] auto apply(const Vector& x) const -> Number override { return m_number; }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
   [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<ScalarNumber>("0");
   }
 
  private:
-  std::string m_string;
+  std::string m_s;  //! keep string to get exact registered form
+  Number m_number;
 };
 
-class VectorUndefFunction : public IVectorFunction {
+class ScalarValue : public IScalarFunction {
  public:
-  explicit VectorUndefFunction(std::string s) : m_string(std::move(s)) {}
+  explicit ScalarValue(std::string s) : m_s(std::move(s)) {}
 
-  [[nodiscard]] std::string string() const override { return "undef_vector(" + m_string + ")"; }
-  [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+  [[nodiscard]] std::string string() const override { return m_s; }
+  [[nodiscard]] std::unique_ptr<IScalarFunction> clone() const override { return std::make_unique<ScalarValue>(m_s); }
+  [[nodiscard]] Number apply(const Vector& x) const override {
+    if (m_s == "pi") {
+      return 4 * atan(1);
+    } else if (m_s == "e") {
+      return exp(1);
+    } else {
+      throw NotImplementedException(__PRETTY_FUNCTION__, "[symbol=" + m_s + "]");
+    }
   }
-  [[nodiscard]] Vector apply(const Vector& x) const override { throw NotImplementedException(__PRETTY_FUNCTION__); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Unknown; }
-  [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
+  [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
+    return std::make_unique<ScalarNumber>("0");
   }
 
  private:
-  std::string m_string;
+  std::string m_s;
+};
+
+class VectorZero : public IVectorFunction {
+ public:
+  explicit VectorZero() {}
+  [[nodiscard]] std::string string() const override { return "<x_i=0>"; }
+  [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override { return std::make_unique<VectorZero>(); }
+  [[nodiscard]] Vector apply(const Vector& x) const override { return impl(x); }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
+  [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override { return std::make_unique<VectorZero>(); }
+
+ public:
+  static Vector impl(const Vector& a) {
+    Vector result(a.size(), Number{0});
+    return result;
+  }
+};
+
+class VectorPartialOne : public IVectorFunction {
+ public:
+  explicit VectorPartialOne(Index index) : m_index(index) {}
+  [[nodiscard]] std::string string() const override { return "<x_" + std::to_string(m_index) + "=1>"; }
+  [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
+    return std::make_unique<VectorPartialOne>(m_index);
+  }
+  [[nodiscard]] Vector apply(const Vector& x) const override { return impl(x, m_index); }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
+  [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override { return std::make_unique<VectorZero>(); }
+
+ private:
+  Index m_index;
+
+ public:
+  static Vector impl(const Vector& a, Index index) {
+    Vector result(a.size(), Number{0});
+    result[index] = 1;
+    return result;
+  }
 };
 
 class ScalarAdd : public IScalarFunction {
@@ -70,12 +114,12 @@ class ScalarSub : public IScalarFunction {
 
   [[nodiscard]] std::string string() const override { return strHelper(*m_a) + "-" + strHelper(*m_b); }
   [[nodiscard]] std::unique_ptr<IScalarFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<ScalarSub>(m_a->clone(), m_b->clone());
   }
   [[nodiscard]] Number apply(const Vector& x) const override { return m_a->apply(x) - m_b->apply(x); }
   [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Term; }
   [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<ScalarSub>(m_a->diff(I), m_b->diff(I));
   }
 
  private:
@@ -90,12 +134,12 @@ class VectorAdd : public IVectorFunction {
 
   [[nodiscard]] std::string string() const override { return strHelper(*m_a) + "+" + strHelper(*m_b); }
   [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<VectorAdd>(m_a->clone(), m_b->clone());
   }
   [[nodiscard]] Vector apply(const Vector& x) const override { return impl(m_a->apply(x), m_b->apply(x)); }
   [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Term; }
   [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<VectorAdd>(m_a->diff(I), m_b->diff(I));
   }
 
  private:
@@ -120,12 +164,12 @@ class VectorSub : public IVectorFunction {
 
   [[nodiscard]] std::string string() const override { return strHelper(*m_a) + "-" + strHelper(*m_b); }
   [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<VectorSub>(m_a->clone(), m_b->clone());
   }
   [[nodiscard]] Vector apply(const Vector& x) const override { return impl(m_a->apply(x), m_b->apply(x)); }
   [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Term; }
   [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<VectorSub>(m_a->diff(I), m_b->diff(I));
   }
 
  private:
@@ -152,10 +196,8 @@ class ScalarPrefixPlus : public IScalarFunction {
     return std::make_unique<ScalarPrefixPlus>(m_a->clone());
   }
   [[nodiscard]] Number apply(const Vector& x) const override { return m_a->apply(x); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
-  [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
-    return m_a->diff(I);
-  }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Prefixed; }
+  [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override { return m_a->diff(I); }
 
  private:
   std::unique_ptr<IScalarFunction> m_a;
@@ -170,7 +212,7 @@ class ScalarPrefixMinus : public IScalarFunction {
     return std::make_unique<ScalarPrefixMinus>(m_a->clone());
   }
   [[nodiscard]] Number apply(const Vector& x) const override { return -m_a->apply(x); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Prefixed; }
   [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
     return std::make_unique<ScalarPrefixMinus>(m_a->diff(I));
   }
@@ -184,14 +226,10 @@ class VectorPrefixPlus : public IVectorFunction {
   explicit VectorPrefixPlus(std::unique_ptr<IVectorFunction>&& a) : m_a(std::move(a)) {}
 
   [[nodiscard]] std::string string() const override { return "+" + strHelper(*m_a); }
-  [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
-  }
+  [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override { return m_a->clone(); }
   [[nodiscard]] Vector apply(const Vector& x) const override { return m_a->apply(x); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
-  [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
-  }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Prefixed; }
+  [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override { return m_a->diff(I); }
 
  private:
   std::unique_ptr<IVectorFunction> m_a;
@@ -203,12 +241,12 @@ class VectorPrefixMinus : public IVectorFunction {
 
   [[nodiscard]] std::string string() const override { return "-" + strHelper(*m_a); }
   [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<VectorPrefixMinus>(m_a->clone());
   }
   [[nodiscard]] Vector apply(const Vector& x) const override { return impl(m_a->apply(x)); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Prefixed; }
   [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<VectorPrefixMinus>(m_a->diff(I));
   }
 
  private:
@@ -233,7 +271,7 @@ class ScalarScalarProduct : public IScalarFunction {
     return std::make_unique<ScalarScalarProduct>(m_a->clone(), m_b->clone());
   }
   [[nodiscard]] Number apply(const Vector& x) const override { return m_a->apply(x) * m_b->apply(x); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Factor; }
   [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
     return std::make_unique<ScalarAdd>(std::make_unique<ScalarScalarProduct>(m_a->clone(), m_b->diff(I)),
                                        std::make_unique<ScalarScalarProduct>(m_a->diff(I), m_b->clone()));
@@ -251,12 +289,13 @@ class ScalarVectorProduct : public IVectorFunction {
 
   [[nodiscard]] std::string string() const override { return strHelper(*m_a) + "*" + strHelper(*m_b); }
   [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<ScalarVectorProduct>(m_a->clone(), m_b->clone());
   }
   [[nodiscard]] Vector apply(const Vector& x) const override { return impl(m_a->apply(x), m_b->apply(x)); }
   [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Factor; }
   [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<VectorAdd>(std::make_unique<ScalarVectorProduct>(m_a->clone(), m_b->diff(I)),
+                                       std::make_unique<ScalarVectorProduct>(m_a->diff(I), m_b->clone()));
   }
 
  private:
@@ -272,6 +311,37 @@ class ScalarVectorProduct : public IVectorFunction {
   }
 };
 
+class VectorScalarDivide : public IVectorFunction {
+ public:
+  explicit VectorScalarDivide(std::unique_ptr<IVectorFunction>&& a, std::unique_ptr<IScalarFunction>&& b)
+      : m_a(std::move(a)), m_b(std::move(b)) {}
+
+  [[nodiscard]] std::string string() const override { return strHelper(*m_a) + "/" + strHelper(*m_b); }
+  [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
+    return std::make_unique<VectorScalarDivide>(m_a->clone(), m_b->clone());
+  }
+  [[nodiscard]] Vector apply(const Vector& x) const override { return impl(m_a->apply(x), m_b->apply(x)); }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Quotient; }
+  [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override {
+    return std::make_unique<VectorScalarDivide>(
+        std::make_unique<VectorSub>(std::make_unique<ScalarVectorProduct>(m_b->clone(), m_a->diff(I)),
+                                    std::make_unique<ScalarVectorProduct>(m_b->diff(I), m_a->clone())),
+        std::make_unique<ScalarScalarProduct>(m_b->clone(), m_b->clone()));
+  }
+
+ private:
+  std::unique_ptr<IVectorFunction> m_a;
+  std::unique_ptr<IScalarFunction> m_b;
+
+ public:
+  static Vector impl(Vector a, const Number b) {
+    for (double& i : a) {
+      i /= b;
+    }
+    return a;
+  }
+};
+
 class ScalarScalarDivide : public IScalarFunction {
  public:
   explicit ScalarScalarDivide(std::unique_ptr<IScalarFunction>&& a, std::unique_ptr<IScalarFunction>&& b)
@@ -279,12 +349,15 @@ class ScalarScalarDivide : public IScalarFunction {
 
   [[nodiscard]] std::string string() const override { return strHelper(*m_a) + "/" + strHelper(*m_b); }
   [[nodiscard]] std::unique_ptr<IScalarFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<ScalarScalarDivide>(m_a->clone(), m_b->clone());
   }
   [[nodiscard]] Number apply(const Vector& x) const override { return m_a->apply(x) / m_b->apply(x); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Factor; }
+  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Quotient; }
   [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<ScalarScalarDivide>(
+        std::make_unique<ScalarSub>(std::make_unique<ScalarScalarProduct>(m_b->clone(), m_a->diff(I)),
+                                    std::make_unique<ScalarScalarProduct>(m_b->diff(I), m_a->clone())),
+        std::make_unique<ScalarScalarProduct>(m_b->clone(), m_b->clone()));
   }
 
  private:
@@ -347,98 +420,17 @@ class ScalarNorm : public IScalarFunction {
 
   [[nodiscard]] std::string string() const override { return "norm2(" + m_a->string() + ")"; }
   [[nodiscard]] std::unique_ptr<IScalarFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<ScalarNorm>(m_a->clone());
   }
   [[nodiscard]] Number apply(const Vector& x) const override { return DotProduct::impl(x, x); }
   [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
   [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
+    return std::make_unique<ScalarScalarProduct>(std::make_unique<ScalarNumber>("2"),
+                                                 std::make_unique<DotProduct>(m_a->diff(I), m_a->clone()));
   }
 
  private:
   std::unique_ptr<IVectorFunction> m_a;
-};
-
-class ScalarNumber : public IScalarFunction {
- public:
-  explicit ScalarNumber(std::string s) : m_s(std::move(s)), m_number(std::stod(m_s)) {}
-  explicit ScalarNumber(Number x) : m_s(std::to_string(x)), m_number(x) {}
-
-  [[nodiscard]] std::string string() const override { return m_s; }
-  [[nodiscard]] std::unique_ptr<IScalarFunction> clone() const override { return std::make_unique<ScalarNumber>(m_s); }
-  [[nodiscard]] auto apply(const Vector& x) const -> Number override { return m_number; }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
-  [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
-    return std::make_unique<ScalarNumber>("0");
-  }
-
- private:
-  std::string m_s;  //! keep string to get exact registered form
-  Number m_number;
-};
-
-class ScalarValue : public IScalarFunction {
- public:
-  explicit ScalarValue(std::string s) : m_s(std::move(s)) {}
-
-  [[nodiscard]] std::string string() const override { return m_s; }
-  [[nodiscard]] std::unique_ptr<IScalarFunction> clone() const override {
-    throw NotImplementedException(__PRETTY_FUNCTION__);
-  }
-  [[nodiscard]] Number apply(const Vector& x) const override {
-    if (m_s == "pi") {
-      return 4 * atan(1);
-    } else if (m_s == "e") {
-      return exp(1);
-    } else {
-      throw NotImplementedException(__PRETTY_FUNCTION__);
-    }
-  }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
-  [[nodiscard]] std::unique_ptr<IScalarFunction> diff(Index I) const override {
-    return std::make_unique<ScalarNumber>("0");
-  }
-
- private:
-  std::string m_s;
-};
-
-class VectorZero : public IVectorFunction {
- public:
-  explicit VectorZero() {}
-  [[nodiscard]] std::string string() const override { return "<x_i=0>"; }
-  [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override { return std::make_unique<VectorZero>(); }
-  [[nodiscard]] Vector apply(const Vector& x) const override { return impl(x); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
-  [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override { return std::make_unique<VectorZero>(); }
-
- public:
-  static Vector impl(const Vector& a) {
-    Vector result(a.size(), Number{0});
-    return result;
-  }
-};
-
-class VectorPartialIdentity : public IVectorFunction {
- public:
-  explicit VectorPartialIdentity(Index index) : m_index(index) {}
-  [[nodiscard]] std::string string() const override { return "<x_" + std::to_string(m_index) + "=1>"; }
-  [[nodiscard]] std::unique_ptr<IVectorFunction> clone() const override {
-    return std::make_unique<VectorPartialIdentity>(m_index);
-  }
-  [[nodiscard]] Vector apply(const Vector& x) const override { return impl(x, m_index); }
-  [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
-  [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override { return std::make_unique<VectorZero>(); }
-
- private:
-  Index m_index;
-
- public:
-  static Vector impl(const Vector& a, Index index) {
-    Vector result(a.size(), Number{0});
-    result[index] = 1;
-    return result;
-  }
 };
 
 class VectorIdentity : public IVectorFunction {
@@ -454,7 +446,7 @@ class VectorIdentity : public IVectorFunction {
   [[nodiscard]] Vector apply(const Vector& x) const override { return x; }
   [[nodiscard]] PriorityLevel level() const override { return PriorityLevel::Value; }
   [[nodiscard]] std::unique_ptr<IVectorFunction> diff(Index I) const override {
-    return std::make_unique<VectorPartialIdentity>(I);
+    return std::make_unique<VectorPartialOne>(I);
   }
 
  private:
@@ -535,25 +527,34 @@ std::unique_ptr<IScalarFunction> make_scalar_function(const ASTNode& node);
 std::unique_ptr<IVectorFunction> make_vector_function(const ASTNode& node);
 
 auto make_named_unary_s2s_function(const std::string& name, std::unique_ptr<IScalarFunction>&& a) {
-  assert(name == "exp");  // FIXME implements the other functions
-  return std::make_unique<ExpFunction>(std::move(a));
+  if (name == "exp") {
+    return std::make_unique<ExpFunction>(std::move(a));
+  } else {
+    throw NotImplementedException(__PRETTY_FUNCTION__, "[name:" + name + "]");
+  }
 }
 
-auto make_named_unary_v2v_function(const std::string& name, std::unique_ptr<IVectorFunction>&& a) {
-  assert(false);  // FIXME implements the other functions
-  return std::make_unique<VectorUndefFunction>(name + "(" + a->string() + ")");
+auto make_named_unary_v2v_function(const std::string& name, std::unique_ptr<IVectorFunction>&& a)
+    -> std::unique_ptr<IVectorFunction> { // type cannot yet inferred (needs at least one return)
+  throw NotImplementedException(__PRETTY_FUNCTION__, "[name:" + name + "]");
 }
 
 auto make_named_unary_v2s_function(const std::string& name, std::unique_ptr<IVectorFunction>&& a) {
-  assert(name == "norm2");  // FIXME implements the other functions
-  return std::make_unique<ScalarNorm>(std::move(a));
+  if (name == "norm2") {
+    return std::make_unique<ScalarNorm>(std::move(a));
+  } else {
+    throw NotImplementedException(__PRETTY_FUNCTION__, "[name:" + name + "]");
+  }
 }
 
 auto make_named_binary_v2s_function(const std::string& name,
                                     std::unique_ptr<IVectorFunction>&& a,
                                     std::unique_ptr<IVectorFunction>&& b) {
-  assert(name == "dot");  // FIXME implements the other functions
-  return std::make_unique<DotProduct>(std::move(a), std::move(b));
+  if (name == "dot") {
+    return std::make_unique<DotProduct>(std::move(a), std::move(b));
+  } else {
+    throw NotImplementedException(__PRETTY_FUNCTION__, "[name:" + name + "]");
+  }
 }
 
 std::unique_ptr<IScalarFunction> make_scalar_function(const ASTNode& node) {
@@ -609,7 +610,7 @@ std::unique_ptr<IScalarFunction> make_scalar_function(const ASTNode& node) {
     assert(a.kind() == node.kind() && a.kind() == b.kind() && b.kind() == ASTNode::Kind::Scalar);
     return std::make_unique<ScalarScalarDivide>(make_scalar_function(a), make_scalar_function(b));
   } else {
-    return std::make_unique<ScalarUndefFunction>(node.name());
+    throw NotImplementedException(__PRETTY_FUNCTION__, "[node:" + node.name() + "]");
   }
 }
 
@@ -640,13 +641,18 @@ std::unique_ptr<IVectorFunction> make_vector_function(const ASTNode& node) {
     } else {
       return {};
     }
+  } else if (node.is<language::divide>()) {
+    const ASTNode& a = *node.children[0];
+    const ASTNode& b = *node.children[1];
+    assert(a.kind() == ASTNode::Kind::Vectorial && b.kind() == ASTNode::Kind::Scalar);
+    return std::make_unique<VectorScalarDivide>(make_vector_function(a), make_scalar_function(b));
   } else if (node.is<language::vector_variable>()) {
     return std::make_unique<VectorIdentity>(node.content());
   } else if (node.is<language::unary_v2v_function_name>()) {
     const ASTNode& a = *node.children[0];
     return make_named_unary_v2v_function(node.string(), make_vector_function(a));
   } else {
-    return std::make_unique<VectorUndefFunction>(node.name());
+    throw NotImplementedException(__PRETTY_FUNCTION__, "[node:" + node.name() + "]");
   }
 }
 

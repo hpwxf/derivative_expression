@@ -33,6 +33,7 @@ TEST_CASE("Evaluate expression", "[eval]") {
       record{"dot(x,x)", dot(x, x)},
       record{"norm2(x)", norm2(x)},
       record{"dot(x-x,x+x*2)", 0},
+      record{"dot(-x,+x)", -14},
       record{"exp(-dot(x-2*x,-x)/x_2/e)", exp(-dot(add(x, prod(-2, x)), prod(-1, x)) / x[2] / e)}
       //
   }));
@@ -53,3 +54,4 @@ TEST_CASE("Evaluate expression", "[eval]") {
     }
   }
 }
+
